@@ -111,8 +111,8 @@ export class TransactionHelper {
         transactionHttp.announce(lockFundsTransactionSigned).subscribe(
             x => console.log(x),
             err => console.error(err));
-    
-        
+
+
         listener.open().then(() => {
 
             transactionHttp.announce(lockFundsTransactionSigned).subscribe(x => console.log("announce", x),
@@ -124,33 +124,35 @@ export class TransactionHelper {
                 .flatMap(ignored => transactionHttp.announceAggregateBonded(signedTransaction))
                 .subscribe(announcedAggregateBonded => {
                     console.log("announcedAggregateBonded", announcedAggregateBonded)
-                    this.confirmDistributor(); 
+                    this.confirmDistributor();
                 },
                     err => console.error(err));
-        }); 
+        });
     }
 
-    cosignAggregateBondedTransaction(transaction: AggregateTransaction,ticketDistributorAccount: Account )  {
-        //const ticketDistributorAccount = Account.createFromPrivateKey(config.TOCKEN_DISTRIBUTOR_PRIVATE_KEY, NetworkType.MIJIN_TEST);
+    cosignAggregateBondedTransaction(transaction: AggregateTransaction, ticketDistributorAccount: Account) {
+        // const ticketDistributorAccount = Account.createFromPrivateKey(config.TOCKEN_DISTRIBUTOR_PRIVATE_KEY, NetworkType.MIJIN_TEST);
         const cosignatureTransaction = CosignatureTransaction.create(transaction);
-        return  ticketDistributorAccount.signCosignatureTransaction(cosignatureTransaction); 
+        return ticketDistributorAccount.signCosignatureTransaction(cosignatureTransaction);
     }
 
     confirmDistributor() {
         const ticketDistributorAccount = Account.createFromPrivateKey(config.TOCKEN_DISTRIBUTOR_PRIVATE_KEY, NetworkType.MIJIN_TEST);
-         
+
         const accountHttp = new AccountHttp(config.URL);
-        const transactionHttp = new TransactionHttp(config.URL); 
+        const transactionHttp = new TransactionHttp(config.URL);
 
         accountHttp.aggregateBondedTransactions(ticketDistributorAccount.publicAccount)
             .flatMap((_) => _)
             .filter((_) => !_.signedByAccount(ticketDistributorAccount.publicAccount))
-            .map(transaction => { 
+            .map(transaction => {
                 //console.log('transaction :',transaction );
-                return this.cosignAggregateBondedTransaction(transaction, ticketDistributorAccount)})
+                return this.cosignAggregateBondedTransaction(transaction, ticketDistributorAccount)
+            })
             .flatMap(cosignatureSignedTransaction => {// console.log('cosignatureSignedTransaction :', cosignatureSignedTransaction);
-                return transactionHttp.announceAggregateBondedCosignature(cosignatureSignedTransaction)}
-            )  
+                return transactionHttp.announceAggregateBondedCosignature(cosignatureSignedTransaction)
+            }
+            )
             .subscribe(announcedTransaction => console.log(announcedTransaction),
                 err => console.error(err));
     }

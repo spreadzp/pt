@@ -30,6 +30,10 @@ To install the dependencies after you've cloned the project, go to its root fold
 ```
 npm install
 ```
+```
+cp sample-env.env .env
+```
+
 
 ### Building the Angular application
 
