@@ -1,0 +1,200 @@
+Get http://localhost:1337/api/users
+Get http://localhost:3000/sensors/ 
+
+POST http://localhost:3000/sensors/create HTTP/1.1
+content-type: application/json
+
+{ 
+    "sensorId": "HJGJTIUYT1545GG",
+    "sensorName": "string",
+    "publicKey": "JHGFFT1545GG",
+    "ovnerId": "kiyiuoy"
+}
+
+Get http://localhost:3000/sensors/all
+
+Get https://arduino-mijin-jvatxphfut.now.sh/device/3
+
+POST http://localhost:3000/device/signal HTTP/1.1
+content-type: application/json
+
+{
+   "shipmentId": "shrimp-25-05-18",
+   "deviceId": "arduino-1",
+   "sensorId": "sensor1",   
+   "value": 45.65,
+   "time": "Wed, 23 May 2018 08:32:39 GMT"
+}
+
+POST http://localhost:3000/device/signal HTTP/1.1
+content-type: application/json
+
+{
+   "shipmentId": "shrimp-25-05-18",
+   "deviceId": "arduino-1",
+   "sensorId": "sensor2",   
+   "value": true,
+   "time": "Wed, 31 May 2018 09:32:39 GMT"
+}
+
+POST http://localhost:3000/device/signal HTTP/1.1
+content-type: application/json
+
+{
+   "shipmentId": "shrimp-25-05-18",
+   "deviceId": "arduino-1",
+   "sensorId": "sensor3",   
+   "value": true,
+   "time": "Wed, 31 May 2018 09:32:39 GMT"
+}
+
+POST https://arduino-mijin-qcpbglakaw.now.sh/device/signal  HTTP/1.1
+content-type: application/json
+
+{
+   "shipmentId": "shrimp-25-05-18",
+   "deviceId": "arduino-1",
+   "sensorId": "sensor1",   
+   "value": true,
+   "time": "Wed, 31 May 2018 09:32:39 GMT"
+}
+
+POST http://localhost:3000/buyer/prepay HTTP/1.1
+content-type: application/json
+
+{
+    "buerCurrency": "XEM",
+    "payment": "3",
+    "itemName": "XEM",
+    "quantityOfGoods": "1",
+    "time": "Wed, 31 May 2018 09:32:39 GMT"
+} 
+
+Get http://localhost:1337/account
+
+Get http://localhost:3000/address
+
+Get http://localhost:3000/tx
+Get https://arduino-iot-nem.herokuapp.com/tx
+
+Get https://arduino-iot-nem.herokuapp.com/device/3
+
+
+POST http://localhost:3000/delivery/create HTTP/1.1
+content-type: application/json
+
+{
+  "shipmentId": "fe354543t4",
+  "sensorId": "333",
+  "timeSensor": "Wed, 31 May 2018 09:32:39 GMT",
+  "valueSensor": "236" 
+} 
+
+POST http://localhost:1337/sensor/create HTTP/1.1
+content-type: application/json
+
+{
+  "sensorId": "YFUTjh78",
+  "deviceId": "qwewq",
+  "sensorName": "Temperature",
+  "publicKey": "121324wew5",
+  "status": "switch-on",
+  "ovnerId": "yui899i"
+} 
+
+POST http://localhost:1337/data/new-data HTTP/1.1
+content-type: application/json
+
+{
+   "shipmentId": "ewarwqre", 
+    "sensorId": "YFUTjh78",
+    "value": 878,
+    "goal": true,
+    "timeWork": false,
+    "time": "15657999825"
+} 
+ 
+POST http://localhost:1337/shipment/create HTTP/1.1
+content-type: application/json
+
+{
+  "shipmentId": "fe354543t4",
+  "startShipmentTime": "453543",
+  "buerCurrency": "nem:xem",
+  "payment": 1,
+  "goodsName": "nem:xem",
+  "quantityOfGoods": 2,
+  "endShipmentTime": "366555433",
+  "buyerPrivateKeyName": "INITIATOR_PRIVATE",
+  "sellerPublicKeyName": "SENSOR_TOTAL_MULTISIG_PUBLIC",
+  "statusShipment": "start"
+}
+
+POST http://localhost:1337/shipment/confirm HTTP/1.1
+content-type: application/json
+
+{
+  "multisigPrivateKeyName": "SENSOR_TOTAL_MULTISIG_PRIVATE",
+  "cosignerPrivateKeyName": "SENSOR_TRAIN_DRIVER_MULTISIG_PRIVATE"
+} 
+
+POST http://localhost:1337/shipment/confirm HTTP/1.1
+content-type: application/json
+
+{
+  "multisigPrivateKeyName": "SENSOR_TOTAL_MULTISIG_PRIVATE",
+  "cosignerPrivateKeyName": "SENSOR_DRIVE_PRIVATE"
+} 
+
+POST http://localhost:1337/shipment/confirm HTTP/1.1
+content-type: application/json
+
+{
+  "multisigPrivateKeyName": "SENSOR_TOTAL_MULTISIG_PRIVATE",
+  "cosignerPrivateKeyName": "SENSOR_WEIGHT_PRIVATE"
+} 
+
+POST http://localhost:1337/shipment/confirm HTTP/1.1
+content-type: application/json
+
+{
+  "multisigPrivateKeyName": "SENSOR_TOTAL_MULTISIG_PRIVATE",
+  "cosignerPrivateKeyName": "SENSOR_FINERPRINT_PRIVATE"
+}
+ 
+POST http://localhost:1337/shipment/confirm HTTP/1.1
+content-type: application/json
+
+{
+  "multisigPrivateKeyName": "SENSOR_TOTAL_MULTISIG_PRIVATE",
+  "cosignerPrivateKeyName": "SENSOR_TEMP_PRIVATE"
+} 
+
+Get http://localhost:1337/account 
+
+Post http://localhost:1337/account/create HTTP/1.1
+content-type: application/json
+
+{
+  "shipmentsId": "fe354543t4",
+  "name": "buyer",
+  "publicKey": "HGUYIT6785"
+}
+
+console.log('body.NameMultisig :', body.NameMultisig);
+    console.log('body.consigners :', body.consigners
+
+Post http://localhost:1337/account/create-multisig HTTP/1.1
+content-type: application/json
+
+{
+  "nameMultisigPrivate": "SENSOR_TOTAL_MULTISIG_PRIVATE", 
+  "consigners": [
+    "SENSOR_DRIVE_PUBLIC", "SENSOR_WEIGHT_PUBLIC", 
+    "SENSOR_FINERPRINT_PUBLIC", "SENSOR_TEMP_PUBLIC",
+    "SENSOR_TRAIN_DRIVER_MULTISIG_PUBLIC"
+    ]
+} 
+
+Get http://localhost:1337/sensor/all
+Get http://localhost:1337/account/info-account/SD7AKZ-YA5NHJ-DVBRNS-H5WPOI-SGMPAL-YBVAXV-VFLY

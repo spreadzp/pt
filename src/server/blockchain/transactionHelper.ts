@@ -10,21 +10,22 @@ import {
     CosignatureTransaction,
     AccountHttp
 } from 'nem2-sdk';
-
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 export class TransactionHelper {
     transactionHttp: TransactionHttp;
-    privateKey = config.PRIV_KEY as string;
+    privateKey = process.env.PRIV_KEY as string;
     account: Account;
     registerNamespaceTransaction: RegisterNamespaceTransaction;
 
     constructor() {
-        this.transactionHttp = new TransactionHttp(config.URL);
-        this.account = Account.createFromPrivateKey(this.privateKey, NetworkType.MIJIN_TEST);
+        this.transactionHttp = new TransactionHttp(process.env.URL);
+        //this.account = Account.createFromPrivateKey(this.privateKey, NetworkType.MIJIN_TEST);
     }
 
     createTransferTransaction() {
-        const recipientAddress = config.RECIPIENT_ADDRESS;
+        const recipientAddress = process.env.RECIPIENT_ADDRESS;
 
         const transferTransaction = TransferTransaction.create(
             Deadline.create(),
@@ -35,9 +36,9 @@ export class TransactionHelper {
         );
     }
 
-    sendMosaic() {
-        const recipientAddress = config.RECIPIENT_ADDRESS;
-        const signer = PublicAccount.createFromPublicKey(config.PUB_KEY, NetworkType.MIJIN_TEST);
+    sendMosaic(account: Account) {
+        const recipientAddress = process.env.RECIPIENT_ADDRESS;
+        const signer = PublicAccount.createFromPublicKey(process.env.PUB_KEY, NetworkType.MIJIN_TEST);
         const transferTransaction = TransferTransaction.create(
             Deadline.create(),
             Address.createFromRawAddress(recipientAddress),
@@ -46,11 +47,11 @@ export class TransactionHelper {
             NetworkType.MIJIN_TEST,
         );
 
-        this.sendSignedTransaction(transferTransaction);
+        this.sendSignedTransaction(transferTransaction, account);
     }
 
-    sendSignedTransaction(transaction: any) {
-        const signedTransaction = this.account.sign(transaction);
+    sendSignedTransaction(transaction: any, account: Account) {
+        const signedTransaction = account.sign(transaction);
 
         this.transactionHttp.announce(signedTransaction).subscribe(
             x => console.log(x),
@@ -58,28 +59,29 @@ export class TransactionHelper {
         );
     }
 
-    sendAtomicSwap(numberTickets: number, mosaicName: string, priceTicket: number) {
-        console.log('mosaicName :', mosaicName);
+    createShipment(
+        buyerPrivateKeyName: string, sellerPublicKeyName: string,
+        countSellerGoods: number, nameGoods: string, countBuyerCurrency: number) {
+        console.log('!!!!!!', countSellerGoods, nameGoods, countBuyerCurrency);
         // Replace with private key
-        const alicePrivateKey = config.PRIV_KEY;
+        const alicePrivateKey = process.env[buyerPrivateKeyName];
         // Replace with public key
-        const ticketDistributorPublicKey = config.TOCKEN_DISTRIBUTOR_PUBLIC_KEY;
-
+        const ticketDistributorPublicKey = process.env[sellerPublicKeyName];
         const aliceAccount = Account.createFromPrivateKey(alicePrivateKey, NetworkType.MIJIN_TEST);
         const ticketDistributorPublicAccount = PublicAccount.createFromPublicKey(ticketDistributorPublicKey, NetworkType.MIJIN_TEST);
 
         const aliceToTicketDistributorTx = TransferTransaction.create(
             Deadline.create(),
             ticketDistributorPublicAccount.address,
-            [XEM.createRelative(priceTicket)],
-            PlainMessage.create('send 10 nem:xem to distributor'),
+            [XEM.createRelative(countBuyerCurrency)],
+            PlainMessage.create(`send ${countBuyerCurrency} nem:xem to distributor`),
             NetworkType.MIJIN_TEST,
         );
-        const message = `send ${numberTickets}${mosaicName} to alice`;
+        const message = `send ${countSellerGoods}${nameGoods} to alice`;
         const ticketDistributorToAliceTx = TransferTransaction.create(
             Deadline.create(),
             aliceAccount.address,
-            [new Mosaic(new MosaicId(mosaicName), UInt64.fromUint(numberTickets))],
+            [new Mosaic(new MosaicId(nameGoods), UInt64.fromUint(countSellerGoods))],
             PlainMessage.create(message),
             NetworkType.MIJIN_TEST,
         );
@@ -92,10 +94,6 @@ export class TransactionHelper {
             NetworkType.MIJIN_TEST);
 
         const signedTransaction = aliceAccount.sign(aggregateTransaction);
-        /* const ticketDistributorAccount = Account.createFromPrivateKey(config.TOCKEN_DISTRIBUTOR_PRIVATE_KEY, NetworkType.MIJIN_TEST);
-       
-        const cosignatureTransaction = CosignatureTransaction.create(aggregateTransaction);
- */
         const lockFundsTransaction = LockFundsTransaction.create(
             Deadline.create(),
             XEM.createRelative(10),
@@ -104,18 +102,17 @@ export class TransactionHelper {
             NetworkType.MIJIN_TEST);
 
         const lockFundsTransactionSigned = aliceAccount.sign(lockFundsTransaction);
-        const transactionHttp = new TransactionHttp(config.URL);
+        const transactionHttp = new TransactionHttp(process.env.URL_MIJIN);
 
         // announce signed transaction
-        const listener = new Listener(config.URL);
+        const listener = new Listener(process.env.URL_MIJIN);
         transactionHttp.announce(lockFundsTransactionSigned).subscribe(
             x => console.log(x),
             err => console.error(err));
 
-
         listener.open().then(() => {
 
-            transactionHttp.announce(lockFundsTransactionSigned).subscribe(x => console.log("announce", x),
+            transactionHttp.announce(lockFundsTransactionSigned).subscribe(x => console.log('announce', x),
                 err => console.error(err));
 
             listener.confirmed(aliceAccount.address)
@@ -123,8 +120,8 @@ export class TransactionHelper {
                     && transaction.transactionInfo.hash === lockFundsTransactionSigned.hash)
                 .flatMap(ignored => transactionHttp.announceAggregateBonded(signedTransaction))
                 .subscribe(announcedAggregateBonded => {
-                    console.log("announcedAggregateBonded", announcedAggregateBonded)
-                    this.confirmDistributor();
+                    console.log('announcedAggregateBonded', announcedAggregateBonded);
+                    //this.confirmDistributor();
                 },
                     err => console.error(err));
         });
@@ -136,24 +133,50 @@ export class TransactionHelper {
         return ticketDistributorAccount.signCosignatureTransaction(cosignatureTransaction);
     }
 
-    confirmDistributor() {
-        const ticketDistributorAccount = Account.createFromPrivateKey(config.TOCKEN_DISTRIBUTOR_PRIVATE_KEY, NetworkType.MIJIN_TEST);
-
-        const accountHttp = new AccountHttp(config.URL);
-        const transactionHttp = new TransactionHttp(config.URL);
+    confirmDistributor(privateKeyName: string) {
+        const ticketDistributorAccount = Account.createFromPrivateKey(process.env[privateKeyName], NetworkType.MIJIN_TEST);
+        const accountHttp = new AccountHttp(process.env.URL_MIJIN);
+        const transactionHttp = new TransactionHttp(process.env.URL_MIJIN);
+        console.log('accountHttp :', accountHttp);
 
         accountHttp.aggregateBondedTransactions(ticketDistributorAccount.publicAccount)
             .flatMap((_) => _)
             .filter((_) => !_.signedByAccount(ticketDistributorAccount.publicAccount))
             .map(transaction => {
-                //console.log('transaction :',transaction );
-                return this.cosignAggregateBondedTransaction(transaction, ticketDistributorAccount)
+                console.log('transaction :', transaction);
+                return this.cosignAggregateBondedTransaction(transaction, ticketDistributorAccount);
             })
-            .flatMap(cosignatureSignedTransaction => {// console.log('cosignatureSignedTransaction :', cosignatureSignedTransaction);
-                return transactionHttp.announceAggregateBondedCosignature(cosignatureSignedTransaction)
+            .flatMap(cosignatureSignedTransaction => {
+                console.log('cosignatureSignedTransaction :', cosignatureSignedTransaction);
+                return transactionHttp.announceAggregateBondedCosignature(cosignatureSignedTransaction);
             }
             )
             .subscribe(announcedTransaction => console.log(announcedTransaction),
                 err => console.error(err));
+    }
+
+    confirmMultisig(multisigPrivateKeyName: string, cosignerPrivateKeyName: string) {
+        const consignerAccount = Account.createFromPrivateKey(process.env[cosignerPrivateKeyName], NetworkType.MIJIN_TEST);
+        const multisigAccount = Account.createFromPrivateKey(process.env[multisigPrivateKeyName], NetworkType.MIJIN_TEST);
+        const transactionHttp = new TransactionHttp(process.env.URL_MIJIN);
+        const accountHttp = new AccountHttp(process.env.URL_MIJIN);
+
+        accountHttp.aggregateBondedTransactions(multisigAccount.publicAccount)
+            .flatMap((_) => _)
+            .filter((_) => !_.signedByAccount(consignerAccount.publicAccount))
+            .map(transaction => this.cosignAggregateBondedTransaction(transaction, consignerAccount))
+            .flatMap(cosignatureSignedTransaction => transactionHttp.announceAggregateBondedCosignature(cosignatureSignedTransaction))
+            .subscribe(announcedTransaction => console.log(announcedTransaction),
+                err => console.error(err));
+    }
+
+    anounce(signedTransaction: any) {
+        const transactionHttp = new TransactionHttp(process.env.URL);
+
+        // announce signed transaction
+
+        transactionHttp.announce(signedTransaction).subscribe(
+            x => console.log(x),
+            err => console.error(err));
     }
 }

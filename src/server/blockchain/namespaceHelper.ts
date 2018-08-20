@@ -5,11 +5,10 @@ import {
 } from 'nem2-sdk';
 import { config } from './config';
 
-
 export class NamespaceHelper {
     namespaceHttp: NamespaceHttp;
-    privateKey;
-    account;
+    privateKey: string;
+    account: Account;
     transactionHttp: TransactionHttp;
     originAccount: Address;
 

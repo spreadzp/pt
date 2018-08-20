@@ -23,7 +23,7 @@ const jwtSecret = extractKey(`${rootPath}/keys/jwt.private.key`);
 const Config: IConfig = {
   development: {
     rootPath,
-    db: 'mongodb://localhost:27017/store',
+    db: 'mongodb://localhost:27017/prometrain',
     httpPort: 1337,
     wsPort: 1338,
     jwtSecret,

@@ -7,8 +7,9 @@ import {
     MultisigCosignatoryModificationType, MultisigCosignatoryModification,
     TransactionHttp, AggregateTransaction, UInt64, LockFundsTransaction, Listener
 } from "nem2-sdk";
-import { config } from "./config";
-
+import { TransactionHelper } from './transactionHelper';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 export class AccountHelper {
     public account: Account;
@@ -16,34 +17,41 @@ export class AccountHelper {
     originAccount: PublicAccount;
     balance: any;
     public address: string;
+    transactionHelper: TransactionHelper;
 
-    constructor(_address: string, _publicKey: string) {
-        this.accountHttp = new AccountHttp(config.URL);
-        this.originAccount = PublicAccount.createFromPublicKey(config.PUB_KEY, NetworkType.MIJIN_TEST);
-        this.address = _address;
+    constructor() {
+        this.accountHttp = new AccountHttp(process.env.URL_MIJIN);
+        //this.originAccount = PublicAccount.createFromPublicKey(config.PUB_KEY, NetworkType.MIJIN_TEST); 
+        this.transactionHelper = new TransactionHelper();
     }
 
+    async getAccountInfo(pubKey: string) {
+        let info;
+        await this.accountHttp.getAccountInfo(Address.createFromRawAddress(pubKey)).subscribe(
+            accountInfo => {
+                info = accountInfo,
+                    console.log('accountInfo=', accountInfo),
 
-    getAccountInfo() {
-
-        return this.accountHttp.getAccountInfo(Address.createFromRawAddress(this.address)).subscribe(
-            accountInfo => console.log('accountInfo=', accountInfo),
+                    console.log('accountInfo.mosaics :', accountInfo.mosaics[0].amount);
+                return info;
+            },
             err => console.error(err)
         );
+
     }
 
     public getBalanceAccount() {
-        const mosaicHttp = new MosaicHttp(config.URL);
-        const namespaceHttp = new NamespaceHttp(config.URL);
+        const mosaicHttp = new MosaicHttp(process.env.URL);
+        const namespaceHttp = new NamespaceHttp(process.env.URL);
 
         const mosaicService = new MosaicService(this.accountHttp, mosaicHttp, namespaceHttp);
 
-        return mosaicService.mosaicsAmountViewFromAddress(Address.createFromRawAddress(config.ADDRESS))
+        return mosaicService.mosaicsAmountViewFromAddress(Address.createFromRawAddress(process.env.ADDRESS))
             .flatMap((_) => _)
             .subscribe(
                 mosaic => {
                     this.balance = mosaic.relativeAmount();
-                    console.log('You have', this.balance, mosaic.fullName())
+                    console.log('You have', this.balance, mosaic.fullName());
                 },
                 err => console.error(err)
             );
@@ -56,7 +64,7 @@ export class AccountHelper {
     }
 
     openAccount(_privateKey: string) {
-        const privateKey = config.PRIV_KEY as string;
+        const privateKey = process.env.PRIV_KEY as string;
 
         const account = Account.createFromPrivateKey(_privateKey, NetworkType.MIJIN_TEST);
 
@@ -80,7 +88,7 @@ export class AccountHelper {
 
     getTheAmountOfXEMSentToAnAccount(): any {
         // Replace with address
-        const address = Address.createFromRawAddress(config.RECIPIENT_ADDRESS);
+        const address = Address.createFromRawAddress(process.env.RECIPIENT_ADDRESS);
 
         return this.accountHttp
             .outgoingTransactions(this.originAccount)
@@ -98,46 +106,50 @@ export class AccountHelper {
             );
     }
 
-    public createMultisigAccount() {
-        const account = Account.createFromPrivateKey(config.MULTI_PRIV_KEY, NetworkType.MIJIN_TEST);
-        console.log('account :', account);
-        const cosignatory1 = PublicAccount.createFromPublicKey(config.PUB_KEY, NetworkType.MIJIN_TEST);
-        const cosignatory2 = PublicAccount.createFromPublicKey(config.RECIPIENT_PUB_KEY, NetworkType.MIJIN_TEST);
-        console.log('cosignatory1 :', cosignatory1);
-        console.log('cosignatory2 :', cosignatory2);
-        const convertIntoMultisigTransaction = ModifyMultisigAccountTransaction.create(
-            Deadline.create(),
-            1, 1,
-            [
-                new MultisigCosignatoryModification(
-                    MultisigCosignatoryModificationType.Add,
-                    cosignatory1,
-                ),
-                new MultisigCosignatoryModification(
-                    MultisigCosignatoryModificationType.Add,
-                    cosignatory2,
-                )],
-            NetworkType.MIJIN_TEST
-        );
-        console.log('convertIntoMultisigTransaction :', convertIntoMultisigTransaction);
+    createArrayPublicAccounts(publicKeys: any[]): PublicAccount[] {
+        const cosignatories: PublicAccount[] = [];
+
+        for (const publicKey of publicKeys) {
+            const cosignatory = PublicAccount.createFromPublicKey(process.env[publicKey], NetworkType.MIJIN_TEST);
+            console.log(' cosignatory:', cosignatory, cosignatories);
+            cosignatories.push(cosignatory);
+        }
+        return cosignatories;
+    }
+
+    public createMultisigAccount(privateMultisigKey: string, cosignatoriesPubKeys: any[]) {
+        const privateKeyMultisig = process.env[privateMultisigKey];
+        const account = Account.createFromPrivateKey(privateKeyMultisig, NetworkType.MIJIN_TEST);
+        const cosignatories = this.createArrayPublicAccounts(cosignatoriesPubKeys);
+        const convertIntoMultisigTransaction = this.convertIntoMultisigTransaction(cosignatories);
         const signedTransaction = account.sign(convertIntoMultisigTransaction);
-        console.log('signedTransaction :', signedTransaction);
-        const transactionHttp = new TransactionHttp(config.URL);
-        let multisig;
-        let transaction = transactionHttp.announce(signedTransaction).subscribe(
-            x => {
-                console.log("multisig = ", x);
-                multisig = x;
-            },
-            err => console.error(err)
+        this.transactionHelper.anounce(signedTransaction);
+    }
+
+    private convertIntoMultisigTransaction(cosignatories: PublicAccount[]) {
+        const cosignatoriesMultisigArray: MultisigCosignatoryModification[] = [];
+        const numberConsignators = cosignatories.length;
+        for (let i = 0; i < numberConsignators; i++) {
+
+            const newConsignatory = new MultisigCosignatoryModification(
+                MultisigCosignatoryModificationType.Add,
+                cosignatories[i],
+            );
+            cosignatoriesMultisigArray.push(newConsignatory);
+        }
+        return ModifyMultisigAccountTransaction.create(
+            Deadline.create(),
+            numberConsignators, 1,
+            cosignatoriesMultisigArray,
+            NetworkType.MIJIN_TEST
         );
     }
 
     modifyMultisig() {
-        const cosignatoryPrivateKey = config.PRIV_KEY as string;
+        const cosignatoryPrivateKey = process.env.PRIV_KEY as string;
 
         const cosignatoryAccount = Account.createFromPrivateKey(cosignatoryPrivateKey, NetworkType.MIJIN_TEST);
-        const multisigAccount = PublicAccount.createFromPublicKey(config.MULTISIG_PUB_KEY, NetworkType.MIJIN_TEST);
+        const multisigAccount = PublicAccount.createFromPublicKey(process.env.MULTISIG_PUB_KEY, NetworkType.MIJIN_TEST);
 
         const modifyMultisigAccountTransaction = ModifyMultisigAccountTransaction.create(
             Deadline.create(),
@@ -157,20 +169,20 @@ export class AccountHelper {
 
         const signedTransaction = cosignatoryAccount.sign(aggregateTransaction);
 
-        const transactionHttp = new TransactionHttp(config.URL);
+        const transactionHttp = new TransactionHttp(process.env.URL);
 
         // announce signed transaction
         transactionHttp.announce(signedTransaction).subscribe(
-            x => console.log("signedTransaction=", x),
+            x => console.log('signedTransaction=', x),
             err => console.error(err)
         );
     }
 
     addCosignatory() {
         // Replace with the multisig public key
-        const cosignatoryPrivateKey = config.PRIV_KEY as string;
-        const multisigAccountPublicKey = config.MULTISIG_PUB_KEY;
-        const newCosignatoryPublicKey = config.NEW_COSIGNATORY_PUB_KEY;
+        const cosignatoryPrivateKey = process.env.PRIV_KEY as string;
+        const multisigAccountPublicKey = process.env.MULTISIG_PUB_KEY;
+        const newCosignatoryPublicKey = process.env.NEW_COSIGNATORY_PUB_KEY;
 
         const cosignatoryAccount = Account.createFromPrivateKey(cosignatoryPrivateKey, NetworkType.MIJIN_TEST);
         const newCosignatoryAccount = PublicAccount.createFromPublicKey(newCosignatoryPublicKey, NetworkType.MIJIN_TEST);
@@ -205,10 +217,10 @@ export class AccountHelper {
 
         const lockFundsTransactionSigned = cosignatoryAccount.sign(lockFundsTransaction);
 
-        const transactionHttp = new TransactionHttp(config.URL);
+        const transactionHttp = new TransactionHttp(process.env.URL);
 
         // announce signed transaction
-        const listener = new Listener(config.URL);
+        const listener = new Listener(process.env.URL);
 
         listener.open().then(() => {
 
